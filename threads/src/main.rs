@@ -3,6 +3,12 @@ use std::io::{Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use std::{
+    io::{prelude::*, BufReader},
+    net::{TcpListener, TcpStream},
+};
+use regex::Regex;
+
 const FILENAME: &str = "access_counts";
 const DOCSIZE: usize = 16;
 
@@ -29,5 +35,52 @@ fn main() -> Result<(), std::io::Error> {
             Ok(_) => println!("other thread Error")
         }
     }
+
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
+
+        handle_connection(stream);
+    }
+
     Ok(())
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&mut stream);
+    let http_request: Vec<_> = buf_reader
+        .lines()
+        .map(|result| result.unwrap())
+        .take_while(|line| !line.is_empty())
+        .collect();
+
+    let http_path: Regex = Regex::new(r"^GET /([0-9]+)/? ").unwrap();
+    let response = if http_request.len() == 0 {
+        http_reply(409, "GET /<document ID>")
+
+    } else {
+        match http_path.captures(&http_request[0]) {
+            None => {
+                println!("Request: {:#?}", http_request);
+                http_reply(409, "GET /<document ID>")
+            },
+            Some(path) => {
+                http_reply(200, &path[1])
+            }
+        }
+    };
+    stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn http_reply(code: u16, contents: &str) -> String {
+    let (code, desc) = match code {
+        200 => (200, "OK"),
+        400 => (400, "Bad Request"),
+        _ => (500, "Internal Server Error")
+    };
+    let status_line = format!("HTTP/1.1 {code} {desc}");
+    let length = contents.len();
+
+    format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}")
 }
