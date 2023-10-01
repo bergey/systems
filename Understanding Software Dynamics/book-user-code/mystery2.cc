@@ -86,7 +86,7 @@ static const int kPageSize = 4096;		// Must be a power of two
 static const int kPageSizeMask = kPageSize - 1;
 
 // Make an array bigger than any expected cache size
-static const int kMaxArraySize = 40 * 1024 * 1024;
+static const int kMaxArraySize = 160 * 1024 * 1024;
 
 // Minimum useful cache line size is twice sizeof(void*), 16 bytes
 // Maximum useful cache line size is page size, assumed here to be 4KB
@@ -280,7 +280,7 @@ void  FindCacheSizes(uint8* ptr, int kMaxArraySize, int linesize) {
   const Pair* pairptr = MakeLongList(ptr, kMaxArraySize, linesize, makelinear);
 
   // Load 16 to 512K cache lines and time it. 32MB cache / 64B linesize = 512K lines.
-  for (int lgcount = 4; lgcount <= 19; ++lgcount) {
+  for (int lgcount = 4; lgcount <= 21; ++lgcount) {
     int count = 1 << lgcount;
  
     // Try to force the data we will access out of the caches
@@ -288,7 +288,7 @@ void  FindCacheSizes(uint8* ptr, int kMaxArraySize, int linesize) {
 
    // Repeat four times. First will take cache misses, others will not if small enough
     fprintf(stdout, "lgcount[%d] load N cache lines, giving cy/ld. Repeat.  ", lgcount);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
       int64 cyclesperload = ScrambledLoads(pairptr, count);
       fprintf(stdout, "%lld ", cyclesperload);
     }
