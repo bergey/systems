@@ -49,25 +49,15 @@ fn main() -> Result<(), std::io::Error> {
 
 fn handle_connection(mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
-
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
     let http_path: Regex = Regex::new(r"^GET /([0-9]+)/? ").unwrap();
-    let response = if http_request.len() == 0 {
-        http_reply(409, "GET /<document ID>")
-
-    } else {
-        match http_path.captures(&http_request[0]) {
-            None => {
-                println!("Request: {:#?}", http_request);
-                http_reply(409, "GET /<document ID>")
-            },
-            Some(path) => {
-                http_reply(200, &path[1])
-            }
+    let response = match http_path.captures(&request_line) {
+        None => {
+            println!("Request: {:#?}", request_line);
+            http_reply(409, "GET /<document ID>")
+        },
+        Some(path) => {
+            http_reply(200, &path[1])
         }
     };
     stream.write_all(response.as_bytes()).unwrap();
