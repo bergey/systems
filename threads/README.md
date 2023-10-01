@@ -10,7 +10,11 @@ All programs will:
 5. write back to disk
 6. send an HTTP response with the new count
 
-For now, each document is a 1kB sequence in a single file that contains the same byte repeated (the count).  The mutexes needed to avoid lost writes are part of each threading model.  Might experiment with document size, or with a better DB design, like a WAL / Snapshot, or an LSM.
+For now, each document is a DOCSIZE slice of a single file that contains the same byte repeated (the count).  Since every document is the same size, finding a given document is easy.  Alas, this requires serializing all accesses.
+
+Instead, we should shard the documents among a configurable number of files.  I presume it will be necessary to tune the shard count to keep contention low, but staying below file handle limits no matter how many TCP connections or documents we have.  Wait until we can observe contention.
+
+The mutexes needed to avoid lost writes are part of each threading model.  Might experiment with document size, or with a better DB design, like a WAL / Snapshot, or an LSM.
 
 ## Threading
 
